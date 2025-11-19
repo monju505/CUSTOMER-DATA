@@ -1,0 +1,1770 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Customer Document Management System</title>
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-storage-compat.js"></script>
+</head>
+<body class="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-6">
+    <div id="app" class="max-w-7xl mx-auto">
+        <!-- Firebase Login Modal -->
+        <div id="loginModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div class="bg-white rounded-lg shadow-xl p-8 w-full max-w-md">
+                <h2 class="text-2xl font-bold text-indigo-900 mb-6 text-center">Customer Data System</h2>
+                
+                <!-- Demo Accounts -->
+                <div class="mb-4 p-4 bg-yellow-50 rounded-lg">
+                    <h3 class="font-semibold text-yellow-800 mb-2">Demo Accounts:</h3>
+                    <div class="text-sm space-y-1">
+                        <div><strong>Admin:</strong> admin@demo.com / 123456</div>
+                        <div><strong>User:</strong> user@demo.com / 123456</div>
+                    </div>
+                </div>
+
+                <div id="loginForm" class="space-y-4">
+                    <input
+                        type="email"
+                        id="loginEmail"
+                        placeholder="Email"
+                        value="admin@demo.com"
+                        class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500"
+                    />
+                    <input
+                        type="password"
+                        id="loginPassword"
+                        placeholder="Password"
+                        value="123456"
+                        class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500"
+                    />
+                    <button
+                        onclick="login()"
+                        class="w-full bg-indigo-600 text-white py-2 rounded-lg font-semibold hover:bg-indigo-700"
+                    >
+                        Login
+                    </button>
+                    <button
+                        onclick="signup()"
+                        class="w-full bg-green-600 text-white py-2 rounded-lg font-semibold hover:bg-green-700"
+                    >
+                        Sign Up
+                    </button>
+                </div>
+                
+                <!-- Admin Settings -->
+                <div id="adminSettings" class="mt-6 p-4 bg-gray-50 rounded-lg hidden">
+                    <h3 class="font-semibold text-gray-800 mb-2">Admin Settings:</h3>
+                    <div class="space-y-2">
+                        <input
+                            type="email"
+                            id="adminEmailInput"
+                            placeholder="New admin email"
+                            class="w-full border border-gray-300 rounded-lg px-3 py-1 text-sm"
+                        />
+                        <input
+                            type="password"
+                            id="adminPasswordInput"
+                            placeholder="New admin password"
+                            class="w-full border border-gray-300 rounded-lg px-3 py-1 text-sm"
+                        />
+                        <button
+                            onclick="addNewAdmin()"
+                            class="w-full bg-red-600 text-white py-1 rounded text-sm hover:bg-red-700"
+                        >
+                            Add New Admin
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main App Content -->
+        <div id="mainApp" class="hidden">
+            <!-- Header -->
+            <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
+                <div class="flex justify-between items-center mb-4">
+                    <div>
+                        <h1 class="text-3xl font-bold text-indigo-900">Customer Document Management System</h1>
+                        <div class="flex items-center gap-2 mt-2">
+                            <span id="syncStatus" class="text-sm px-2 py-1 rounded-full bg-yellow-100 text-yellow-800">
+                                Connecting...
+                            </span>
+                            <span id="userDisplay" class="text-sm text-gray-600"></span>
+                            <span id="adminBadge" class="text-sm px-2 py-1 rounded-full bg-red-100 text-red-800 hidden">
+                                Admin
+                            </span>
+                        </div>
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="toggleAdminView()" id="adminViewBtn" class="flex items-center gap-2 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 hidden">
+                            <i data-lucide="shield" class="w-5 h-5"></i>
+                            <span id="adminViewText">Admin View</span>
+                        </button>
+                        <button onclick="exportToJSON()" class="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700">
+                            <i data-lucide="download" class="w-5 h-5"></i>
+                            JSON Backup
+                        </button>
+                        <button onclick="exportToCSV()" class="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+                            <i data-lucide="download" class="w-5 h-5"></i>
+                            Excel Backup
+                        </button>
+                        <button onclick="showRestoreModal()" class="flex items-center gap-2 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700">
+                            <i data-lucide="upload" class="w-5 h-5"></i>
+                            Restore
+                        </button>
+                        <button onclick="logout()" class="flex items-center gap-2 bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700">
+                            <i data-lucide="log-out" class="w-5 h-5"></i>
+                            Logout
+                        </button>
+                    </div>
+                </div>
+
+                <div id="listView">
+                    <div class="flex gap-4 mb-4">
+                        <div class="flex-1 relative">
+                            <i data-lucide="search" class="absolute left-3 top-3 text-gray-400 w-5 h-5"></i>
+                            <input
+                                type="text"
+                                id="searchInput"
+                                placeholder="Search by name, mobile or NID..."
+                                class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                            />
+                        </div>
+                        <button
+                            onclick="showAddForm()"
+                            class="flex items-center gap-2 bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700"
+                        >
+                            <i data-lucide="plus" class="w-5 h-5"></i>
+                            Add New Customer
+                        </button>
+                    </div>
+
+                    <div class="text-sm text-gray-600">
+                        Total Customers: <span id="customerCount">0</span>
+                        <span id="totalUsersCount" class="hidden ml-4">Total Users: <span id="usersCount">0</span></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Admin Panel -->
+            <div id="adminPanel" class="bg-white rounded-lg shadow-lg p-6 mb-6 hidden">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold text-red-900">Admin Panel - All Users Data</h2>
+                    <div class="flex gap-2">
+                        <button onclick="refreshAdminData()" class="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+                            <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+                            Refresh
+                        </button>
+                        <button onclick="toggleAdminView()" class="text-gray-500 hover:text-gray-700">
+                            <i data-lucide="x" class="w-6 h-6"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                    <div class="bg-blue-50 p-4 rounded-lg">
+                        <div class="text-2xl font-bold text-blue-900" id="adminTotalCustomers">0</div>
+                        <div class="text-sm text-blue-600">Total Customers</div>
+                    </div>
+                    <div class="bg-green-50 p-4 rounded-lg">
+                        <div class="text-2xl font-bold text-green-900" id="adminTotalUsers">0</div>
+                        <div class="text-sm text-green-600">Total Users</div>
+                    </div>
+                    <div class="bg-purple-50 p-4 rounded-lg">
+                        <div class="text-2xl font-bold text-purple-900" id="adminRecentActivity">0</div>
+                        <div class="text-sm text-purple-600">Today's Activity</div>
+                    </div>
+                    <div class="bg-red-50 p-4 rounded-lg">
+                        <div class="text-2xl font-bold text-red-900" id="adminAdminsCount">0</div>
+                        <div class="text-sm text-red-600">Admin Users</div>
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full">
+                        <thead class="bg-red-600 text-white">
+                            <tr>
+                                <th class="px-6 py-3 text-left">User Email</th>
+                                <th class="px-6 py-3 text-left">User ID</th>
+                                <th class="px-6 py-3 text-left">Customers</th>
+                                <th class="px-6 py-3 text-left">Last Active</th>
+                                <th class="px-6 py-3 text-left">Role</th>
+                                <th class="px-6 py-3 text-center">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="adminUsersTableBody">
+                            <tr>
+                                <td colspan="6" class="px-6 py-8 text-center text-gray-500">
+                                    Loading users data...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Add/Edit Form -->
+            <div id="addForm" class="bg-white rounded-lg shadow-lg p-6 mb-6 hidden">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold text-indigo-900" id="formTitle">Add New Customer</h2>
+                    <button onclick="hideAddForm()" class="text-gray-500 hover:text-gray-700">
+                        <i data-lucide="x" class="w-6 h-6"></i>
+                    </button>
+                </div>
+
+                <!-- User Selection for Admin -->
+                <div id="userSelection" class="mb-4 p-4 bg-blue-50 rounded-lg hidden">
+                    <label class="block text-sm font-semibold text-blue-800 mb-2">Select User for this Customer:</label>
+                    <select id="selectedUserId" class="w-full border border-blue-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500">
+                        <option value="">Select User</option>
+                    </select>
+                </div>
+
+                <form onsubmit="handleSubmit(event)">
+                    <!-- Personal Info -->
+                    <div class="mb-6">
+                        <h3 class="text-lg font-semibold text-indigo-800 mb-3 flex items-center gap-2">
+                            <i data-lucide="user" class="w-5 h-5"></i>
+                            Personal Information
+                        </h3>
+                        <div class="grid grid-cols-2 gap-4">
+                            <input
+                                type="text"
+                                id="nameEnglish"
+                                placeholder="Full Name (English) *"
+                                required
+                                class="border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500"
+                            />
+                            <input
+                                type="text"
+                                id="nameBangla"
+                                placeholder="Full Name (Bangla)"
+                                class="border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500"
+                            />
+                            <input
+                                type="text"
+                                id="fatherNameEnglish"
+                                placeholder="Father's Name (English)"
+                                class="border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500"
+                            />
+                            <input
+                                type="text"
+                                id="fatherNameBangla"
+                                placeholder="Father's Name (Bangla)"
+                                class="border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500"
+                            />
+                            <input
+                                type="text"
+                                id="motherNameEnglish"
+                                placeholder="Mother's Name (English)"
+                                class="border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500"
+                            />
+                            <input
+                                type="text"
+                                id="motherNameBangla"
+                                placeholder="Mother's Name (Bangla)"
+                                class="border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500"
+                            />
+                            <input
+                                type="date"
+                                id="dob"
+                                placeholder="Date of Birth"
+                                class="border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500"
+                            />
+                            <input
+                                type="text"
+                                id="nid"
+                                placeholder="NID Number"
+                                class="border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500"
+                            />
+                            <input
+                                type="tel"
+                                id="phone"
+                                placeholder="Mobile Number *"
+                                required
+                                class="border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500"
+                            />
+                            <input
+                                type="email"
+                                id="email"
+                                placeholder="Email"
+                                class="border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500"
+                            />
+                            <input
+                                type="text"
+                                id="address"
+                                placeholder="Address"
+                                class="border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500 col-span-2"
+                            />
+                        </div>
+                    </div>
+
+                    <!-- Family Info -->
+                    <div class="mb-6">
+                        <h3 class="text-lg font-semibold text-indigo-800 mb-3 flex items-center gap-2">
+                            <i data-lucide="users" class="w-5 h-5"></i>
+                            Family Information
+                        </h3>
+                        <div class="grid grid-cols-2 gap-4">
+                            <input
+                                type="text"
+                                id="spouseName"
+                                placeholder="Spouse Name"
+                                class="border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500"
+                            />
+                            <input
+                                type="text"
+                                id="children"
+                                placeholder="Number of Children"
+                                class="border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500"
+                            />
+                            <input
+                                type="text"
+                                id="emergencyContact"
+                                placeholder="Emergency Contact Name"
+                                class="border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500"
+                            />
+                            <input
+                                type="tel"
+                                id="emergencyPhone"
+                                placeholder="Emergency Contact Number"
+                                class="border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500"
+                            />
+                        </div>
+                    </div>
+
+                    <!-- Academic Info -->
+                    <div class="mb-6">
+                        <div class="flex justify-between items-center mb-3">
+                            <h3 class="text-lg font-semibold text-indigo-800 flex items-center gap-2">
+                                <i data-lucide="file-text" class="w-5 h-5"></i>
+                                Academic Information
+                            </h3>
+                            <button type="button" onclick="addAcademicField()" class="flex items-center gap-2 bg-green-600 text-white px-3 py-1 rounded-lg hover:bg-green-700 text-sm">
+                                <i data-lucide="plus" class="w-4 h-4"></i>
+                                Add Education
+                            </button>
+                        </div>
+                        <div id="academicFields">
+                            <!-- Academic fields will be dynamically added here -->
+                        </div>
+                    </div>
+
+                    <!-- Experience Info -->
+                    <div class="mb-6">
+                        <h3 class="text-lg font-semibold text-indigo-800 mb-3 flex items-center gap-2">
+                            <i data-lucide="briefcase" class="w-5 h-5"></i>
+                            Work Experience
+                        </h3>
+                        <div class="grid grid-cols-2 gap-4">
+                            <input
+                                type="text"
+                                id="currentJob"
+                                placeholder="Current Job/Profession"
+                                class="border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500"
+                            />
+                            <input
+                                type="text"
+                                id="company"
+                                placeholder="Company Name"
+                                class="border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500"
+                            />
+                            <input
+                                type="text"
+                                id="experience"
+                                placeholder="Experience (Years)"
+                                class="border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500"
+                            />
+                            <input
+                                type="text"
+                                id="skills"
+                                placeholder="Skills"
+                                class="border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500"
+                            />
+                        </div>
+                    </div>
+
+                    <!-- Documents Upload -->
+                    <div class="mb-6">
+                        <h3 class="text-lg font-semibold text-indigo-800 mb-3 flex items-center gap-2">
+                            <i data-lucide="upload" class="w-5 h-5"></i>
+                            Document Upload
+                        </h3>
+                        <input
+                            type="file"
+                            id="fileInput"
+                            multiple
+                            accept="image/*,.pdf,.doc,.docx"
+                            class="border border-gray-300 rounded-lg px-4 py-2 w-full focus:ring-2 focus:ring-indigo-500"
+                        />
+                        <div id="documentList" class="mt-3 grid grid-cols-3 gap-2"></div>
+                    </div>
+
+                    <div class="flex gap-4">
+                        <button type="submit" class="flex-1 bg-indigo-600 text-white py-3 rounded-lg font-semibold hover:bg-indigo-700">
+                            Save Information
+                        </button>
+                        <button
+                            type="button"
+                            onclick="hideAddForm()"
+                            class="px-6 bg-gray-300 text-gray-700 py-3 rounded-lg font-semibold hover:bg-gray-400"
+                        >
+                            Cancel
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Customer List -->
+            <div id="customerList" class="bg-white rounded-lg shadow-lg overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full">
+                        <thead class="bg-indigo-600 text-white">
+                            <tr>
+                                <th class="px-6 py-3 text-left">Name</th>
+                                <th class="px-6 py-3 text-left">Mobile</th>
+                                <th class="px-6 py-3 text-left">NID</th>
+                                <th class="px-6 py-3 text-left">Education</th>
+                                <th class="px-6 py-3 text-left">Profession</th>
+                                <th class="px-6 py-3 text-left" id="userColumnHeader">User</th>
+                                <th class="px-6 py-3 text-center">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="customerTableBody">
+                            <tr>
+                                <td colspan="7" class="px-6 py-8 text-center text-gray-500">
+                                    No customers found. Add new customers.
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Profile View -->
+            <div id="profileView" class="bg-white rounded-lg shadow-lg p-8 hidden">
+                <!-- Profile content will be dynamically inserted here -->
+            </div>
+        </div>
+
+        <!-- Restore Modal -->
+        <div id="restoreModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+            <div class="bg-white rounded-lg shadow-xl p-8 w-full max-w-md">
+                <h2 class="text-2xl font-bold text-indigo-900 mb-6 text-center">Restore Data</h2>
+                <div class="space-y-4">
+                    <input
+                        type="file"
+                        id="restoreFileInput"
+                        accept=".json,.csv"
+                        class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500"
+                    />
+                    <div class="flex gap-2">
+                        <button
+                            onclick="restoreFromJSON()"
+                            class="flex-1 bg-green-600 text-white py-2 rounded-lg font-semibold hover:bg-green-700"
+                        >
+                            Restore JSON
+                        </button>
+                        <button
+                            onclick="restoreFromCSV()"
+                            class="flex-1 bg-blue-600 text-white py-2 rounded-lg font-semibold hover:bg-blue-700"
+                        >
+                            Restore CSV
+                        </button>
+                    </div>
+                    <button
+                        onclick="hideRestoreModal()"
+                        class="w-full bg-gray-300 text-gray-700 py-2 rounded-lg font-semibold hover:bg-gray-400"
+                    >
+                        Cancel
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Firebase Configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyC36SzQ2vSItRcsoS79-dvetLFxhMDDe10",
+            authDomain: "customer-data-181d9.firebaseapp.com",
+            databaseURL: "https://customer-data-181d9-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "customer-data-181d9",
+            storageBucket: "customer-data-181d9.firebasestorage.app",
+            messagingSenderId: "643081188398",
+            appId: "1:643081188398:web:5c05085d683c87a99adbbf"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        const auth = firebase.auth();
+        const storage = firebase.storage();
+
+        // Initialize Lucide icons
+        lucide.createIcons();
+
+        // Data management
+        let customers = [];
+        let editingId = null;
+        let currentDocuments = [];
+        let academicFieldCount = 0;
+        let currentUser = null;
+        let unsubscribeCustomers = null;
+        let isAdmin = false;
+        let isAdminView = false;
+        let allUsersData = [];
+        let adminEmails = new Set();
+        let selectedUserIdForCustomer = '';
+
+        // DOM elements
+        const elements = {
+            loginModal: document.getElementById('loginModal'),
+            mainApp: document.getElementById('mainApp'),
+            listView: document.getElementById('listView'),
+            addForm: document.getElementById('addForm'),
+            customerList: document.getElementById('customerList'),
+            profileView: document.getElementById('profileView'),
+            customerTableBody: document.getElementById('customerTableBody'),
+            customerCount: document.getElementById('customerCount'),
+            formTitle: document.getElementById('formTitle'),
+            searchInput: document.getElementById('searchInput'),
+            documentList: document.getElementById('documentList'),
+            fileInput: document.getElementById('fileInput'),
+            academicFields: document.getElementById('academicFields'),
+            syncStatus: document.getElementById('syncStatus'),
+            userDisplay: document.getElementById('userDisplay'),
+            restoreModal: document.getElementById('restoreModal'),
+            adminPanel: document.getElementById('adminPanel'),
+            adminViewBtn: document.getElementById('adminViewBtn'),
+            adminBadge: document.getElementById('adminBadge'),
+            adminTotalCustomers: document.getElementById('adminTotalCustomers'),
+            adminTotalUsers: document.getElementById('adminTotalUsers'),
+            adminRecentActivity: document.getElementById('adminRecentActivity'),
+            adminUsersTableBody: document.getElementById('adminUsersTableBody'),
+            totalUsersCount: document.getElementById('totalUsersCount'),
+            usersCount: document.getElementById('usersCount'),
+            adminAdminsCount: document.getElementById('adminAdminsCount'),
+            adminSettings: document.getElementById('adminSettings'),
+            adminViewText: document.getElementById('adminViewText'),
+            userColumnHeader: document.getElementById('userColumnHeader'),
+            userSelection: document.getElementById('userSelection'),
+            selectedUserId: document.getElementById('selectedUserId')
+        };
+
+        // Education levels
+        const educationLevels = [
+            'SSC',
+            'HSC',
+            'Diploma',
+            'Honours',
+            'Degree',
+            'Masters',
+            'PhD',
+            'Others'
+        ];
+
+        // Initialize Admin Emails from Firestore
+        function initializeAdminEmails() {
+            return db.collection('adminSettings').doc('adminEmails').get()
+                .then((doc) => {
+                    if (doc.exists) {
+                        adminEmails = new Set(doc.data().emails || []);
+                    } else {
+                        // Initialize with default admin emails
+                        const defaultAdmins = ['admin@demo.com'];
+                        adminEmails = new Set(defaultAdmins);
+                        return db.collection('adminSettings').doc('adminEmails').set({
+                            emails: defaultAdmins,
+                            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                        });
+                    }
+                })
+                .catch((error) => {
+                    console.error('Error loading admin emails:', error);
+                    // Fallback to default
+                    adminEmails = new Set(['admin@demo.com']);
+                });
+        }
+
+        // Authentication State Listener
+        auth.onAuthStateChanged(async (user) => {
+            currentUser = user;
+            if (user) {
+                await initializeAdminEmails();
+                
+                // Check if user is admin
+                isAdmin = adminEmails.has(user.email);
+                
+                elements.loginModal.classList.add('hidden');
+                elements.mainApp.classList.remove('hidden');
+                elements.userDisplay.textContent = user.email;
+                elements.syncStatus.textContent = 'Connected to Cloud';
+                elements.syncStatus.className = 'text-sm px-2 py-1 rounded-full bg-green-100 text-green-800';
+
+                // Show admin features if user is admin
+                if (isAdmin) {
+                    elements.adminViewBtn.classList.remove('hidden');
+                    elements.adminBadge.classList.remove('hidden');
+                    elements.totalUsersCount.classList.remove('hidden');
+                    elements.adminSettings.classList.remove('hidden');
+                    elements.userColumnHeader.textContent = 'User (Admin View)';
+                    loadAllUsersData();
+                } else {
+                    elements.userColumnHeader.textContent = 'User';
+                }
+
+                // Create demo accounts on first run
+                await createDemoAccounts();
+
+                // Load data from Firestore
+                loadCustomersFromFirestore();
+                startAutoBackup();
+            } else {
+                // User is signed out
+                elements.loginModal.classList.remove('hidden');
+                elements.mainApp.classList.add('hidden');
+                if (unsubscribeCustomers) {
+                    unsubscribeCustomers();
+                }
+            }
+        });
+
+        // Create demo accounts
+        async function createDemoAccounts() {
+            const demoAccounts = [
+                { email: 'admin@demo.com', password: '123456', isAdmin: true },
+                { email: 'user@demo.com', password: '123456', isAdmin: false }
+            ];
+
+            for (const account of demoAccounts) {
+                try {
+                    await auth.createUserWithEmailAndPassword(account.email, account.password);
+                    if (account.isAdmin) {
+                        await addAdminEmail(account.email);
+                    }
+                    // Sign out after creating (user will login manually)
+                    await auth.signOut();
+                } catch (error) {
+                    if (error.code === 'auth/email-already-in-use') {
+                        // Account already exists, that's fine
+                        console.log('Account already exists:', account.email);
+                    } else {
+                        console.error('Error creating demo account:', error);
+                    }
+                }
+            }
+            
+            // Re-authenticate if we were trying to login
+            if (document.getElementById('loginEmail').value) {
+                await login();
+            }
+        }
+
+        // Add new admin email
+        async function addAdminEmail(email) {
+            adminEmails.add(email);
+            await db.collection('adminSettings').doc('adminEmails').set({
+                emails: Array.from(adminEmails),
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            return true;
+        }
+
+        // Remove admin email
+        async function removeAdminEmail(email) {
+            adminEmails.delete(email);
+            await db.collection('adminSettings').doc('adminEmails').set({
+                emails: Array.from(adminEmails),
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            return true;
+        }
+
+        // Load all users data for admin
+        function loadAllUsersData() {
+            if (!isAdmin) return;
+
+            // Get all customers to count per user
+            db.collection('customers').get().then((snapshot) => {
+                const userStats = {};
+                let totalCustomers = 0;
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                let todayActivity = 0;
+
+                snapshot.forEach((doc) => {
+                    const customer = doc.data();
+                    const userId = customer.userId;
+                    
+                    if (!userStats[userId]) {
+                        userStats[userId] = {
+                            customerCount: 0,
+                            lastActivity: customer.updatedAt,
+                            email: userId
+                        };
+                    }
+                    
+                    userStats[userId].customerCount++;
+                    totalCustomers++;
+
+                    // Check if activity is from today
+                    if (customer.updatedAt) {
+                        const activityDate = customer.updatedAt.toDate();
+                        if (activityDate >= today) {
+                            todayActivity++;
+                        }
+                    }
+                });
+
+                elements.adminTotalCustomers.textContent = totalCustomers;
+                elements.adminTotalUsers.textContent = Object.keys(userStats).length;
+                elements.adminRecentActivity.textContent = todayActivity;
+                elements.adminAdminsCount.textContent = adminEmails.size;
+                
+                renderAdminUsersTable(userStats);
+            }).catch((error) => {
+                console.error('Error loading admin data:', error);
+            });
+        }
+
+        function renderAdminUsersTable(userStats) {
+            let tableHTML = '';
+            
+            Object.keys(userStats).forEach(userId => {
+                const stats = userStats[userId];
+                
+                tableHTML += `
+                    <tr class="border-b hover:bg-gray-50">
+                        <td class="px-6 py-4">
+                            <div class="font-semibold">${userId}</div>
+                        </td>
+                        <td class="px-6 py-4">${userId}</td>
+                        <td class="px-6 py-4">
+                            <span class="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-sm">
+                                ${stats.customerCount} customers
+                            </span>
+                        </td>
+                        <td class="px-6 py-4">
+                            ${stats.lastActivity ? stats.lastActivity.toDate().toLocaleDateString() : 'N/A'}
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="px-2 py-1 rounded-full text-xs ${
+                                adminEmails.has(userId) ? 
+                                'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-800'
+                            }">
+                                ${adminEmails.has(userId) ? 'Admin' : 'User'}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4">
+                            <div class="flex justify-center gap-2">
+                                <button
+                                    onclick="viewUserCustomers('${userId}')"
+                                    class="text-blue-600 hover:text-blue-800"
+                                    title="View Customers"
+                                >
+                                    <i data-lucide="eye" class="w-4 h-4"></i>
+                                </button>
+                                ${isAdmin ? `
+                                <button
+                                    onclick="toggleAdminRole('${userId}', ${!adminEmails.has(userId)})"
+                                    class="${adminEmails.has(userId) ? 'text-orange-600 hover:text-orange-800' : 'text-green-600 hover:text-green-800'}"
+                                    title="${adminEmails.has(userId) ? 'Remove Admin' : 'Make Admin'}"
+                                >
+                                    <i data-lucide="${adminEmails.has(userId) ? 'user-x' : 'user-check'}" class="w-4 h-4"></i>
+                                </button>
+                                ` : ''}
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            elements.adminUsersTableBody.innerHTML = tableHTML || `
+                <tr>
+                    <td colspan="6" class="px-6 py-8 text-center text-gray-500">
+                        No users found.
+                    </td>
+                </tr>
+            `;
+            lucide.createIcons();
+        }
+
+        function toggleAdminRole(userId, makeAdmin) {
+            if (makeAdmin) {
+                addAdminEmail(userId).then(() => {
+                    alert('User added as admin successfully!');
+                    loadAllUsersData();
+                }).catch(error => {
+                    alert('Error: ' + error.message);
+                });
+            } else {
+                removeAdminEmail(userId).then(() => {
+                    alert('User removed from admin successfully!');
+                    loadAllUsersData();
+                }).catch(error => {
+                    alert('Error: ' + error.message);
+                });
+            }
+        }
+
+        function viewUserCustomers(userId) {
+            db.collection('customers')
+                .where('userId', '==', userId)
+                .get()
+                .then((snapshot) => {
+                    const userCustomers = [];
+                    snapshot.forEach((doc) => {
+                        userCustomers.push({ id: doc.id, ...doc.data() });
+                    });
+                    
+                    showAllCustomersView(userCustomers, `User: ${userId}`);
+                })
+                .catch((error) => {
+                    console.error('Error loading user customers:', error);
+                    alert('Error loading user data');
+                });
+        }
+
+        function showAllCustomersView(allCustomers, title) {
+            const originalCustomers = [...customers];
+            customers = allCustomers;
+            
+            elements.customerList.classList.remove('hidden');
+            elements.adminPanel.classList.add('hidden');
+            isAdminView = false;
+            elements.adminViewText.textContent = 'Admin View';
+            
+            renderCustomerList();
+            
+            // Add back button
+            const headerActions = document.querySelector('.flex.justify-between.items-center.mb-4 .flex.gap-2');
+            let backButton = headerActions.querySelector('.back-to-admin');
+            if (!backButton) {
+                backButton = document.createElement('button');
+                backButton.className = 'back-to-admin flex items-center gap-2 bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700';
+                backButton.innerHTML = '<i data-lucide="arrow-left" class="w-5 h-5"></i> Back to Admin';
+                backButton.onclick = () => {
+                    customers = originalCustomers;
+                    backButton.remove();
+                    toggleAdminView();
+                };
+                headerActions.prepend(backButton);
+                lucide.createIcons();
+            }
+        }
+
+        function toggleAdminView() {
+            if (!isAdmin) return;
+            
+            isAdminView = !isAdminView;
+            
+            if (isAdminView) {
+                elements.adminPanel.classList.remove('hidden');
+                elements.customerList.classList.add('hidden');
+                elements.listView.classList.add('hidden');
+                elements.addForm.classList.add('hidden');
+                elements.profileView.classList.add('hidden');
+                elements.adminViewText.textContent = 'User View';
+                loadAllUsersData();
+            } else {
+                elements.adminPanel.classList.add('hidden');
+                elements.customerList.classList.remove('hidden');
+                elements.listView.classList.remove('hidden');
+                elements.adminViewText.textContent = 'Admin View';
+            }
+        }
+
+        function refreshAdminData() {
+            if (isAdmin) {
+                loadAllUsersData();
+            }
+        }
+
+        // Authentication Functions
+        function login() {
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+            
+            auth.signInWithEmailAndPassword(email, password)
+                .then((userCredential) => {
+                    console.log('User logged in:', userCredential.user);
+                })
+                .catch((error) => {
+                    alert('Login failed: ' + error.message);
+                });
+        }
+
+        function signup() {
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+            
+            auth.createUserWithEmailAndPassword(email, password)
+                .then((userCredential) => {
+                    console.log('User created:', userCredential.user);
+                    alert('Account created successfully! Please login.');
+                })
+                .catch((error) => {
+                    alert('Signup failed: ' + error.message);
+                });
+        }
+
+        function logout() {
+            auth.signOut();
+        }
+
+        function addNewAdmin() {
+            const email = document.getElementById('adminEmailInput').value;
+            const password = document.getElementById('adminPasswordInput').value;
+            
+            if (!email || !password) {
+                alert('Please enter both email and password');
+                return;
+            }
+
+            auth.createUserWithEmailAndPassword(email, password)
+                .then((userCredential) => {
+                    return addAdminEmail(email);
+                })
+                .then(() => {
+                    alert('New admin added successfully!');
+                    document.getElementById('adminEmailInput').value = '';
+                    document.getElementById('adminPasswordInput').value = '';
+                })
+                .catch((error) => {
+                    alert('Error adding admin: ' + error.message);
+                });
+        }
+
+        // Firestore Data Management - FIXED VERSION
+        function loadCustomersFromFirestore() {
+            if (!currentUser) return;
+
+            let query = db.collection('customers');
+            
+            // If not admin, only show user's own data
+            if (!isAdmin) {
+                query = query.where('userId', '==', currentUser.uid);
+            }
+            
+            query = query.orderBy('updatedAt', 'desc');
+
+            unsubscribeCustomers = query.onSnapshot((snapshot) => {
+                customers = [];
+                snapshot.forEach((doc) => {
+                    customers.push({ id: doc.id, ...doc.data() });
+                });
+                
+                updateCustomerCount();
+                renderCustomerList();
+                
+                // Update admin stats
+                if (isAdmin) {
+                    elements.usersCount.textContent = new Set(customers.map(c => c.userId)).size;
+                }
+            }, (error) => {
+                console.error('Error loading customers:', error);
+                if (!isAdmin) {
+                    loadFromLocalStorage();
+                }
+            });
+        }
+
+        function loadFromLocalStorage() {
+            if (currentUser && !isAdmin) {
+                const localData = localStorage.getItem(`customers_${currentUser.uid}`);
+                if (localData) {
+                    customers = JSON.parse(localData);
+                    updateCustomerCount();
+                    renderCustomerList();
+                    elements.syncStatus.textContent = 'Using Local Data';
+                    elements.syncStatus.className = 'text-sm px-2 py-1 rounded-full bg-yellow-100 text-yellow-800';
+                }
+            }
+        }
+
+        // FIXED: Save customer function with proper error handling
+        function saveCustomerToFirestore(customerData) {
+            if (!currentUser) {
+                return Promise.reject(new Error('No user logged in'));
+            }
+
+            // Determine which user ID to use
+            let targetUserId = currentUser.uid;
+            if (isAdmin && selectedUserIdForCustomer) {
+                targetUserId = selectedUserIdForCustomer;
+            }
+
+            const customerWithUser = {
+                ...customerData,
+                userId: targetUserId,
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            };
+
+            console.log('Saving customer with data:', customerWithUser);
+
+            if (editingId) {
+                return db.collection('customers').doc(editingId).update(customerWithUser)
+                    .then(() => {
+                        console.log('Customer updated successfully');
+                        return Promise.resolve();
+                    })
+                    .catch((error) => {
+                        console.error('Error updating customer:', error);
+                        return Promise.reject(error);
+                    });
+            } else {
+                return db.collection('customers').add({
+                    ...customerWithUser,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                })
+                .then((docRef) => {
+                    console.log('Customer added successfully with ID:', docRef.id);
+                    return Promise.resolve();
+                })
+                .catch((error) => {
+                    console.error('Error adding customer:', error);
+                    return Promise.reject(error);
+                });
+            }
+        }
+
+        function deleteCustomerFromFirestore(customerId) {
+            if (!currentUser) return Promise.reject(new Error('No user logged in'));
+            return db.collection('customers').doc(customerId).delete();
+        }
+
+        // Auto Backup System
+        function startAutoBackup() {
+            setInterval(() => {
+                if (currentUser && customers.length > 0 && !isAdmin) {
+                    backupToFirestore();
+                }
+            }, 5 * 60 * 1000);
+        }
+
+        function backupToFirestore() {
+            if (!currentUser || isAdmin) return;
+
+            const backupData = {
+                customers: customers,
+                backupDate: new Date().toISOString(),
+                customerCount: customers.length
+            };
+
+            db.collection('backups').add({
+                userId: currentUser.uid,
+                data: backupData,
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            }).then(() => {
+                console.log('Auto backup completed');
+            }).catch((error) => {
+                console.error('Auto backup failed:', error);
+            });
+        }
+
+        // Show Add Form with User Selection for Admin
+        function showAddForm() {
+            elements.addForm.classList.remove('hidden');
+            elements.customerList.classList.add('hidden');
+            elements.listView.classList.add('hidden');
+            elements.adminPanel.classList.add('hidden');
+            
+            // Show user selection for admin
+            if (isAdmin) {
+                elements.userSelection.classList.remove('hidden');
+                loadUserSelection();
+            } else {
+                elements.userSelection.classList.add('hidden');
+            }
+            
+            resetForm();
+        }
+
+        function loadUserSelection() {
+            // Get all unique user IDs from customers
+            const uniqueUserIds = [...new Set(customers.map(c => c.userId))];
+            
+            let options = '<option value="">Select User (Optional - defaults to current user)</option>';
+            uniqueUserIds.forEach(userId => {
+                options += `<option value="${userId}">${userId}</option>`;
+            });
+            
+            elements.selectedUserId.innerHTML = options;
+        }
+
+        function hideAddForm() {
+            elements.addForm.classList.add('hidden');
+            elements.customerList.classList.remove('hidden');
+            elements.listView.classList.remove('hidden');
+            resetForm();
+            editingId = null;
+            selectedUserIdForCustomer = '';
+        }
+
+        function resetForm() {
+            const form = document.querySelector('form');
+            form.reset();
+            currentDocuments = [];
+            elements.documentList.innerHTML = '';
+            elements.formTitle.textContent = 'Add New Customer';
+            
+            elements.academicFields.innerHTML = '';
+            academicFieldCount = 0;
+            addAcademicField();
+            
+            // Reset user selection
+            if (isAdmin) {
+                elements.selectedUserId.value = '';
+            }
+        }
+
+        // Update renderCustomerList to show user info for admin
+        function renderCustomerList() {
+            const searchTerm = elements.searchInput.value.toLowerCase();
+            const filteredCustomers = customers.filter(c =>
+                (c.personalInfo?.nameEnglish?.toLowerCase().includes(searchTerm) ||
+                c.personalInfo?.nameBangla?.toLowerCase().includes(searchTerm) ||
+                c.personalInfo?.phone?.includes(searchTerm) ||
+                c.personalInfo?.nid?.includes(searchTerm)) &&
+                c.personalInfo // Ensure personalInfo exists
+            );
+
+            if (filteredCustomers.length === 0) {
+                elements.customerTableBody.innerHTML = `
+                    <tr>
+                        <td colspan="7" class="px-6 py-8 text-center text-gray-500">
+                            No customers found. Add new customers.
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            elements.customerTableBody.innerHTML = filteredCustomers.map(customer => {
+                const displayName = customer.personalInfo?.nameEnglish || customer.personalInfo?.nameBangla || 'N/A';
+                const highestEducation = customer.academicInfo?.length > 0 
+                    ? customer.academicInfo[customer.academicInfo.length - 1].level 
+                    : 'N/A';
+                
+                // Show user info for admin view
+                const userInfo = isAdmin ? 
+                    `<div class="text-xs text-gray-500">${customer.userId}</div>` : '';
+
+                return `
+                <tr class="border-b hover:bg-gray-50">
+                    <td class="px-6 py-4">
+                        <div class="font-semibold">${displayName}</div>
+                        ${customer.personalInfo?.nameBangla ? `<div class="text-sm text-gray-600">${customer.personalInfo.nameBangla}</div>` : ''}
+                    </td>
+                    <td class="px-6 py-4">${customer.personalInfo?.phone || 'N/A'}</td>
+                    <td class="px-6 py-4">${customer.personalInfo?.nid || 'N/A'}</td>
+                    <td class="px-6 py-4">${highestEducation}</td>
+                    <td class="px-6 py-4">${customer.experienceInfo?.currentJob || 'N/A'}</td>
+                    <td class="px-6 py-4">
+                        ${userInfo}
+                    </td>
+                    <td class="px-6 py-4">
+                        <div class="flex justify-center gap-2">
+                            <button
+                                onclick="viewProfile('${customer.id}')"
+                                class="text-blue-600 hover:text-blue-800"
+                                title="View Profile"
+                            >
+                                <i data-lucide="eye" class="w-4 h-4"></i>
+                            </button>
+                            ${isAdmin || customer.userId === currentUser.uid ? `
+                            <button
+                                onclick="editCustomer('${customer.id}')"
+                                class="text-green-600 hover:text-green-800"
+                                title="Edit"
+                            >
+                                <i data-lucide="edit" class="w-4 h-4"></i>
+                            </button>
+                            <button
+                                onclick="deleteCustomer('${customer.id}')"
+                                class="text-red-600 hover:text-red-800"
+                                title="Delete"
+                            >
+                                <i data-lucide="trash-2" class="w-4 h-4"></i>
+                            </button>
+                            ` : ''}
+                        </div>
+                    </td>
+                </tr>
+                `;
+            }).join('');
+            lucide.createIcons();
+        }
+
+        // FIXED: Handle form submission with better error handling
+        function handleSubmit(event) {
+            event.preventDefault();
+            
+            // Get selected user ID for admin
+            if (isAdmin) {
+                selectedUserIdForCustomer = elements.selectedUserId.value;
+            }
+
+            const customerData = {
+                personalInfo: {
+                    nameEnglish: document.getElementById('nameEnglish').value,
+                    nameBangla: document.getElementById('nameBangla').value,
+                    fatherNameEnglish: document.getElementById('fatherNameEnglish').value,
+                    fatherNameBangla: document.getElementById('fatherNameBangla').value,
+                    motherNameEnglish: document.getElementById('motherNameEnglish').value,
+                    motherNameBangla: document.getElementById('motherNameBangla').value,
+                    dob: document.getElementById('dob').value,
+                    nid: document.getElementById('nid').value,
+                    phone: document.getElementById('phone').value,
+                    email: document.getElementById('email').value,
+                    address: document.getElementById('address').value
+                },
+                familyInfo: {
+                    spouseName: document.getElementById('spouseName').value,
+                    children: document.getElementById('children').value,
+                    emergencyContact: document.getElementById('emergencyContact').value,
+                    emergencyPhone: document.getElementById('emergencyPhone').value
+                },
+                academicInfo: getAllAcademicData(),
+                experienceInfo: {
+                    currentJob: document.getElementById('currentJob').value,
+                    company: document.getElementById('company').value,
+                    experience: document.getElementById('experience').value,
+                    skills: document.getElementById('skills').value
+                },
+                documents: [...currentDocuments]
+            };
+
+            console.log('Submitting customer data:', customerData);
+
+            // Save to Firestore with better error handling
+            saveCustomerToFirestore(customerData)
+                .then(() => {
+                    updateCustomerCount();
+                    renderCustomerList();
+                    hideAddForm();
+                    alert('Customer saved successfully!');
+                })
+                .catch((error) => {
+                    console.error('Error saving customer:', error);
+                    alert('Error saving customer: ' + (error.message || 'Unknown error'));
+                    // Fallback to local storage for non-admin users
+                    if (!isAdmin) {
+                        saveToLocalStorage(customerData);
+                    }
+                });
+        }
+
+        function saveToLocalStorage(customerData) {
+            if (editingId) {
+                customers = customers.map(c => 
+                    c.id === editingId ? { 
+                        ...customerData, 
+                        id: editingId, 
+                        createdAt: c.createdAt, 
+                        updatedAt: new Date().toISOString() 
+                    } : c
+                );
+            } else {
+                const newCustomer = {
+                    ...customerData,
+                    id: Date.now().toString(),
+                    userId: currentUser.uid,
+                    createdAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString()
+                };
+                customers.push(newCustomer);
+            }
+
+            if (currentUser && !isAdmin) {
+                localStorage.setItem(`customers_${currentUser.uid}`, JSON.stringify(customers));
+            }
+            updateCustomerCount();
+            renderCustomerList();
+            hideAddForm();
+            alert('Customer saved to local storage!');
+        }
+
+        // Academic field functions
+        function addAcademicField() {
+            const fieldId = `academic_${academicFieldCount++}`;
+            const academicField = document.createElement('div');
+            academicField.className = 'border border-gray-300 rounded-lg p-4 mb-4 academic-field';
+            academicField.innerHTML = `
+                <div class="flex justify-between items-center mb-3">
+                    <h4 class="font-semibold text-indigo-700">Education Record</h4>
+                    <button type="button" onclick="removeAcademicField('${fieldId}')" class="text-red-600 hover:text-red-800">
+                        <i data-lucide="trash-2" class="w-4 h-4"></i>
+                    </button>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <select id="${fieldId}_level" class="border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500">
+                        <option value="">Select Education Level</option>
+                        ${educationLevels.map(level => `<option value="${level}">${level}</option>`).join('')}
+                    </select>
+                    <input type="text" id="${fieldId}_institution" placeholder="Board/Institution" class="border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500">
+                    <input type="text" id="${fieldId}_roll" placeholder="Roll Number" class="border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500">
+                    <input type="text" id="${fieldId}_registration" placeholder="Registration Number" class="border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500">
+                    <input type="text" id="${fieldId}_passingYear" placeholder="Passing Year" class="border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500">
+                    <input type="text" id="${fieldId}_result" placeholder="Result/GPA" class="border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500">
+                </div>
+            `;
+            elements.academicFields.appendChild(academicField);
+            lucide.createIcons();
+        }
+
+        function removeAcademicField(fieldId) {
+            const field = document.querySelector(`#${fieldId}_level`).closest('.academic-field');
+            if (field) {
+                field.remove();
+            }
+        }
+
+        function getAllAcademicData() {
+            const academicData = [];
+            const academicFields = document.querySelectorAll('.academic-field');
+            
+            academicFields.forEach(field => {
+                const levelSelect = field.querySelector('select[id$="_level"]');
+                const institutionInput = field.querySelector('input[id$="_institution"]');
+                const rollInput = field.querySelector('input[id$="_roll"]');
+                const registrationInput = field.querySelector('input[id$="_registration"]');
+                const passingYearInput = field.querySelector('input[id$="_passingYear"]');
+                const resultInput = field.querySelector('input[id$="_result"]');
+
+                if (levelSelect && levelSelect.value) {
+                    academicData.push({
+                        level: levelSelect.value,
+                        institution: institutionInput?.value || '',
+                        roll: rollInput?.value || '',
+                        registration: registrationInput?.value || '',
+                        passingYear: passingYearInput?.value || '',
+                        result: resultInput?.value || ''
+                    });
+                }
+            });
+
+            return academicData;
+        }
+
+        // File upload functions
+        function handleFileUpload(event) {
+            const files = Array.from(event.target.files);
+            files.forEach(file => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    currentDocuments.push({
+                        name: file.name,
+                        type: file.type,
+                        data: e.target.result,
+                        uploadDate: new Date().toISOString()
+                    });
+                    renderDocumentList();
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+
+        function renderDocumentList() {
+            elements.documentList.innerHTML = currentDocuments.map((doc, idx) => `
+                <div class="flex items-center justify-between bg-gray-100 p-2 rounded">
+                    <span class="text-sm truncate">${doc.name}</span>
+                    <button type="button" onclick="removeDocument(${idx})" class="text-red-600 hover:text-red-800">
+                        <i data-lucide="x" class="w-4 h-4"></i>
+                    </button>
+                </div>
+            `).join('');
+            lucide.createIcons();
+        }
+
+        function removeDocument(index) {
+            currentDocuments.splice(index, 1);
+            renderDocumentList();
+        }
+
+        // Update customer count
+        function updateCustomerCount() {
+            elements.customerCount.textContent = customers.length;
+        }
+
+        // View and Edit customer functions
+        function viewProfile(customerId) {
+            const customer = customers.find(c => c.id === customerId);
+            if (!customer) return;
+
+            const displayName = customer.personalInfo?.nameEnglish || customer.personalInfo?.nameBangla || 'N/A';
+
+            elements.profileView.innerHTML = `
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold text-indigo-900">Customer Profile</h2>
+                    <button onclick="hideProfile()" class="text-gray-600 hover:text-gray-800">
+                        <i data-lucide="x" class="w-6 h-6"></i>
+                    </button>
+                </div>
+
+                <div class="border-4 border-indigo-200 rounded-lg p-8">
+                    <!-- Header -->
+                    <div class="text-center mb-8 border-b-2 border-indigo-300 pb-6">
+                        <h3 class="text-3xl font-bold text-indigo-900 mb-2">${displayName}</h3>
+                        ${customer.personalInfo?.nameBangla ? `<p class="text-xl text-gray-600">${customer.personalInfo.nameBangla}</p>` : ''}
+                        <p class="text-gray-600 mt-2">${customer.experienceInfo?.currentJob || 'N/A'}</p>
+                        ${isAdmin ? `<p class="text-sm text-gray-500 mt-1">User ID: ${customer.userId}</p>` : ''}
+                    </div>
+
+                    <!-- Personal Info -->
+                    <div class="mb-6">
+                        <h4 class="text-xl font-bold text-indigo-800 mb-3 border-b border-indigo-200 pb-2">Personal Information</h4>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div><span class="font-semibold">Father's Name:</span> ${customer.personalInfo?.fatherNameEnglish || 'N/A'} ${customer.personalInfo?.fatherNameBangla ? `(${customer.personalInfo.fatherNameBangla})` : ''}</div>
+                            <div><span class="font-semibold">Mother's Name:</span> ${customer.personalInfo?.motherNameEnglish || 'N/A'} ${customer.personalInfo?.motherNameBangla ? `(${customer.personalInfo.motherNameBangla})` : ''}</div>
+                            <div><span class="font-semibold">Date of Birth:</span> ${customer.personalInfo?.dob || 'N/A'}</div>
+                            <div><span class="font-semibold">NID:</span> ${customer.personalInfo?.nid || 'N/A'}</div>
+                            <div><span class="font-semibold">Mobile:</span> ${customer.personalInfo?.phone || 'N/A'}</div>
+                            <div><span class="font-semibold">Email:</span> ${customer.personalInfo?.email || 'N/A'}</div>
+                            <div class="col-span-2"><span class="font-semibold">Address:</span> ${customer.personalInfo?.address || 'N/A'}</div>
+                        </div>
+                    </div>
+
+                    <!-- Family Info -->
+                    <div class="mb-6">
+                        <h4 class="text-xl font-bold text-indigo-800 mb-3 border-b border-indigo-200 pb-2">Family Information</h4>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div><span class="font-semibold">Spouse Name:</span> ${customer.familyInfo?.spouseName || 'N/A'}</div>
+                            <div><span class="font-semibold">Children:</span> ${customer.familyInfo?.children || 'N/A'}</div>
+                            <div><span class="font-semibold">Emergency Contact:</span> ${customer.familyInfo?.emergencyContact || 'N/A'}</div>
+                            <div><span class="font-semibold">Emergency Phone:</span> ${customer.familyInfo?.emergencyPhone || 'N/A'}</div>
+                        </div>
+                    </div>
+
+                    <!-- Academic Info -->
+                    <div class="mb-6">
+                        <h4 class="text-xl font-bold text-indigo-800 mb-3 border-b border-indigo-200 pb-2">Academic Information</h4>
+                        ${customer.academicInfo?.length > 0 ? `
+                            <div class="overflow-x-auto">
+                                <table class="w-full border-collapse border border-gray-300">
+                                    <thead class="bg-gray-100">
+                                        <tr>
+                                            <th class="border border-gray-300 px-4 py-2">Level</th>
+                                            <th class="border border-gray-300 px-4 py-2">Institution/Board</th>
+                                            <th class="border border-gray-300 px-4 py-2">Roll No</th>
+                                            <th class="border border-gray-300 px-4 py-2">Registration No</th>
+                                            <th class="border border-gray-300 px-4 py-2">Passing Year</th>
+                                            <th class="border border-gray-300 px-4 py-2">Result</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${customer.academicInfo.map(edu => `
+                                            <tr>
+                                                <td class="border border-gray-300 px-4 py-2">${edu.level}</td>
+                                                <td class="border border-gray-300 px-4 py-2">${edu.institution || 'N/A'}</td>
+                                                <td class="border border-gray-300 px-4 py-2">${edu.roll || 'N/A'}</td>
+                                                <td class="border border-gray-300 px-4 py-2">${edu.registration || 'N/A'}</td>
+                                                <td class="border border-gray-300 px-4 py-2">${edu.passingYear || 'N/A'}</td>
+                                                <td class="border border-gray-300 px-4 py-2">${edu.result || 'N/A'}</td>
+                                            </tr>
+                                        `).join('')}
+                                    </tbody>
+                                </table>
+                            </div>
+                        ` : '<p class="text-gray-500">No academic information available.</p>'}
+                    </div>
+
+                    <!-- Experience Info -->
+                    <div class="mb-6">
+                        <h4 class="text-xl font-bold text-indigo-800 mb-3 border-b border-indigo-200 pb-2">Work Experience</h4>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div><span class="font-semibold">Current Job:</span> ${customer.experienceInfo?.currentJob || 'N/A'}</div>
+                            <div><span class="font-semibold">Company:</span> ${customer.experienceInfo?.company || 'N/A'}</div>
+                            <div><span class="font-semibold">Experience:</span> ${customer.experienceInfo?.experience || 'N/A'}</div>
+                            <div><span class="font-semibold">Skills:</span> ${customer.experienceInfo?.skills || 'N/A'}</div>
+                        </div>
+                    </div>
+
+                    ${customer.documents && customer.documents.length > 0 ? `
+                    <div class="mb-6">
+                        <h4 class="text-xl font-bold text-indigo-800 mb-3 border-b border-indigo-200 pb-2">Attached Documents</h4>
+                        <div class="grid grid-cols-3 gap-4">
+                            ${customer.documents.map((doc, idx) => `
+                                <div class="border border-gray-300 rounded-lg p-3">
+                                    <div class="flex items-center gap-2 mb-2">
+                                        <i data-lucide="file-text" class="w-4 h-4 text-indigo-600"></i>
+                                        <span class="text-sm font-semibold truncate">${doc.name}</span>
+                                    </div>
+                                    ${doc.type.startsWith('image/') ? 
+                                        `<img src="${doc.data}" alt="${doc.name}" class="w-full h-32 object-cover rounded" />` :
+                                        `<div class="bg-gray-100 h-32 flex items-center justify-center rounded">
+                                            <i data-lucide="file-text" class="w-12 h-12 text-gray-400"></i>
+                                        </div>`
+                                    }
+                                    <a
+                                        href="${doc.data}"
+                                        download="${doc.name}"
+                                        class="text-xs text-blue-600 hover:underline mt-2 block"
+                                    >
+                                        Download
+                                    </a>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                    ` : ''}
+
+                    <!-- Footer -->
+                    <div class="mt-8 pt-6 border-t-2 border-indigo-300 text-center">
+                        <p class="text-sm text-gray-600">
+                            Created: ${customer.createdAt ? new Date(customer.createdAt.toDate()).toLocaleDateString('en-US') : 'N/A'}
+                            ${customer.updatedAt ? ` | Last Updated: ${new Date(customer.updatedAt.toDate()).toLocaleDateString('en-US')}` : ''}
+                        </p>
+                    </div>
+
+                    <!-- Print Button -->
+                    <div class="flex justify-center gap-4 mt-6">
+                        <button
+                            onclick="window.print()"
+                            class="bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700"
+                        >
+                            Print
+                        </button>
+                        ${isAdmin || customer.userId === currentUser.uid ? `
+                        <button
+                            onclick="editCustomer('${customer.id}')"
+                            class="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700"
+                        >
+                            Edit
+                        </button>
+                        ` : ''}
+                    </div>
+                </div>
+            `;
+
+            elements.profileView.classList.remove('hidden');
+            elements.customerList.classList.add('hidden');
+            elements.listView.classList.add('hidden');
+            lucide.createIcons();
+        }
+
+        function hideProfile() {
+            elements.profileView.classList.add('hidden');
+            elements.customerList.classList.remove('hidden');
+            elements.listView.classList.remove('hidden');
+        }
+
+        function editCustomer(customerId) {
+            const customer = customers.find(c => c.id === customerId);
+            if (!customer) return;
+
+            // Fill form with customer data
+            document.getElementById('nameEnglish').value = customer.personalInfo?.nameEnglish || '';
+            document.getElementById('nameBangla').value = customer.personalInfo?.nameBangla || '';
+            document.getElementById('fatherNameEnglish').value = customer.personalInfo?.fatherNameEnglish || '';
+            document.getElementById('fatherNameBangla').value = customer.personalInfo?.fatherNameBangla || '';
+            document.getElementById('motherNameEnglish').value = customer.personalInfo?.motherNameEnglish || '';
+            document.getElementById('motherNameBangla').value = customer.personalInfo?.motherNameBangla || '';
+            document.getElementById('dob').value = customer.personalInfo?.dob || '';
+            document.getElementById('nid').value = customer.personalInfo?.nid || '';
+            document.getElementById('phone').value = customer.personalInfo?.phone || '';
+            document.getElementById('email').value = customer.personalInfo?.email || '';
+            document.getElementById('address').value = customer.personalInfo?.address || '';
+
+            document.getElementById('spouseName').value = customer.familyInfo?.spouseName || '';
+            document.getElementById('children').value = customer.familyInfo?.children || '';
+            document.getElementById('emergencyContact').value = customer.familyInfo?.emergencyContact || '';
+            document.getElementById('emergencyPhone').value = customer.familyInfo?.emergencyPhone || '';
+
+            document.getElementById('currentJob').value = customer.experienceInfo?.currentJob || '';
+            document.getElementById('company').value = customer.experienceInfo?.company || '';
+            document.getElementById('experience').value = customer.experienceInfo?.experience || '';
+            document.getElementById('skills').value = customer.experienceInfo?.skills || '';
+
+            // Fill academic fields
+            elements.academicFields.innerHTML = '';
+            academicFieldCount = 0;
+            
+            if (customer.academicInfo && customer.academicInfo.length > 0) {
+                customer.academicInfo.forEach(academic => {
+                    const fieldId = `academic_${academicFieldCount++}`;
+                    const academicField = document.createElement('div');
+                    academicField.className = 'border border-gray-300 rounded-lg p-4 mb-4 academic-field';
+                    academicField.innerHTML = `
+                        <div class="flex justify-between items-center mb-3">
+                            <h4 class="font-semibold text-indigo-700">Education Record</h4>
+                            <button type="button" onclick="removeAcademicField('${fieldId}')" class="text-red-600 hover:text-red-800">
+                                <i data-lucide="trash-2" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <select id="${fieldId}_level" class="border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500">
+                                <option value="">Select Education Level</option>
+                                ${educationLevels.map(level => 
+                                    `<option value="${level}" ${level === academic.level ? 'selected' : ''}>${level}</option>`
+                                ).join('')}
+                            </select>
+                            <input type="text" id="${fieldId}_institution" placeholder="Board/Institution" value="${academic.institution || ''}" class="border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500">
+                            <input type="text" id="${fieldId}_roll" placeholder="Roll Number" value="${academic.roll || ''}" class="border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500">
+                            <input type="text" id="${fieldId}_registration" placeholder="Registration Number" value="${academic.registration || ''}" class="border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500">
+                            <input type="text" id="${fieldId}_passingYear" placeholder="Passing Year" value="${academic.passingYear || ''}" class="border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500">
+                            <input type="text" id="${fieldId}_result" placeholder="Result/GPA" value="${academic.result || ''}" class="border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500">
+                        </div>
+                    `;
+                    elements.academicFields.appendChild(academicField);
+                });
+            } else {
+                addAcademicField();
+            }
+
+            currentDocuments = customer.documents || [];
+            renderDocumentList();
+
+            editingId = customerId;
+            elements.formTitle.textContent = 'Edit Information';
+            
+            // Show user selection for admin when editing
+            if (isAdmin) {
+                elements.userSelection.classList.remove('hidden');
+                loadUserSelection();
+                elements.selectedUserId.value = customer.userId;
+            }
+            
+            // Show the form
+            elements.addForm.classList.remove('hidden');
+            elements.customerList.classList.add('hidden');
+            elements.listView.classList.add('hidden');
+            elements.adminPanel.classList.add('hidden');
+            
+            lucide.createIcons();
+        }
+
+        function deleteCustomer(customerId) {
+            if (confirm('Are you sure you want to delete this customer?')) {
+                deleteCustomerFromFirestore(customerId)
+                    .then(() => {
+                        // Successfully deleted from Firestore
+                        alert('Customer deleted successfully!');
+                    })
+                    .catch((error) => {
+                        console.error('Error deleting from Firestore:', error);
+                        customers = customers.filter(c => c.id !== customerId);
+                        if (currentUser && !isAdmin) {
+                            localStorage.setItem(`customers_${currentUser.uid}`, JSON.stringify(customers));
+                        }
+                        alert('Customer deleted from local storage!');
+                    });
+                
+                updateCustomerCount();
+                renderCustomerList();
+            }
+        }
+
+        // Backup and Restore Functions
+        function exportToJSON() {
+            const dataStr = JSON.stringify(customers, null, 2);
+            const dataBlob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(dataBlob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `customer_backup_${new Date().toISOString().split('T')[0]}.json`;
+            link.click();
+        }
+
+        function exportToCSV() {
+            const headers = ['Name (English)', 'Name (Bangla)', 'Father Name', 'Mobile', 'NID', 'Address', 'Highest Education', 'Current Job'];
+            const rows = customers.map(c => [
+                c.personalInfo?.nameEnglish || '',
+                c.personalInfo?.nameBangla || '',
+                c.personalInfo?.fatherNameEnglish || '',
+                c.personalInfo?.phone || '',
+                c.personalInfo?.nid || '',
+                c.personalInfo?.address || '',
+                c.academicInfo?.length > 0 ? c.academicInfo[c.academicInfo.length - 1].level : 'N/A',
+                c.experienceInfo?.currentJob || ''
+            ]);
+
+            const csvContent = [headers, ...rows].map(row => row.join(',')).join('\n');
+            const BOM = '\uFEFF';
+            const dataBlob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(dataBlob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `customer_backup_${new Date().toISOString().split('T')[0]}.csv`;
+            link.click();
+        }
+
+        function showRestoreModal() {
+            elements.restoreModal.classList.remove('hidden');
+        }
+
+        function hideRestoreModal() {
+            elements.restoreModal.classList.add('hidden');
+        }
+
+        function restoreFromJSON() {
+            const fileInput = document.getElementById('restoreFileInput');
+            const file = fileInput.files[0];
+            
+            if (!file) {
+                alert('Please select a JSON file');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const restoredCustomers = JSON.parse(e.target.result);
+                    
+                    if (Array.isArray(restoredCustomers)) {
+                        const batch = db.batch();
+                        restoredCustomers.forEach(customer => {
+                            const customerRef = db.collection('customers').doc();
+                            batch.set(customerRef, {
+                                ...customer,
+                                userId: currentUser.uid,
+                                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                            });
+                        });
+                        
+                        batch.commit().then(() => {
+                            alert('Data restored successfully!');
+                            hideRestoreModal();
+                        }).catch(error => {
+                            alert('Error restoring data: ' + error.message);
+                        });
+                    } else {
+                        alert('Invalid JSON format');
+                    }
+                } catch (error) {
+                    alert('Error parsing JSON file: ' + error.message);
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        function restoreFromCSV() {
+            alert('CSV restore feature will be implemented in the next version');
+        }
+
+        // Initialize the application
+        function init() {
+            updateCustomerCount();
+            renderCustomerList();
+            setupEventListeners();
+            addAcademicField();
+        }
+
+        function setupEventListeners() {
+            elements.searchInput.addEventListener('input', renderCustomerList);
+            elements.fileInput.addEventListener('change', handleFileUpload);
+        }
+
+        // Start the application
+        init();
+    </script>
+</body>
+</html>
